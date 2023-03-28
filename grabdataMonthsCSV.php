@@ -10,7 +10,7 @@
  * 
  * Argument usage ($argv):
  * $argv[0] = this filename => grabdataMonthsCSV.php
- * $argv[1] = output filename => example.csv
+ * $argv[1] = output filename => "example.csv" or ""
  * $argv[2] = starting year (inclusive) => 1988 - 2023
  * $argv[3] = ending year (inclusive) => 1988 - 2023
  * $argv[4] = csv header filename => exampleheaders.txt
@@ -172,12 +172,63 @@ function printStatus(int $status, int $total) : void {
 /**
  * Prints the status of year & month
  */
-function printYearMonthStatus(int $year, int $month) {
+function printYearMonthStatus(int $year, int $month) :void {
     printf("Completing %2d, %5d\n",$month,$year);
 }
 
+/**
+ * Checks if specified command-line arguments are valid.
+ * If invalid, exits program.
+ */
+function checkValidArgs(array $argv) : void {
+    $validArgs = true;
+
+    //check for valid year range
+    if(isset($argv[2]) && isset($argv[3]) && 
+       ((!preg_match("/^[0-9]+$/", $argv[2]) &&
+       !preg_match("/^[0-9]+$/", $argv[3])) ||
+       $argv[2] > $argv[3])) {
+        echo "Please enter the proper input for year.\n";
+        echo "year1 must be less than or equal to year2.\n";
+        echo "- - - - - - - - - - - - - - - - - - - - - - - - -\n";
+        
+        $validArgs = false;
+    }
+
+    //check for valid csvHeaders file
+    if(isset($argv[4]) && !empty($argv[4] && !file_exists($argv[4]))) {
+        echo "Please enter a csv header txt file that exists.\n";
+        echo "- - - - - - - - - - - - - - - - - - - - - - - - -\n";
+        
+        $validArgs = false;
+    }
+
+    if(!$validArgs) {
+        gracefullyExit();
+    }
+}
+
+/**
+ * Exits given a file and a curl handle, closing them and exiting.
+ * If nothing is provided, then closes gracefully.
+ */
+function gracefullyExit(mixed $file = null, CurlHandle $ch = null) : void {
+    if($file != null) {
+        fclose($file);
+    }
+    if($ch != null) {
+        curl_close($ch);
+    }
+    exit(0);
+}
+
+
+//checks if args are valid, exits if not valid                                   
+checkValidArgs($argv);
+
 //init variables
-$file = fopen(isset($argv[1]) && !empty($argv[1]) ? $argv[1] : "vulnData.csv","w");
+$file = fopen(isset($argv[1]) && 
+             !empty($argv[1]) ? $argv[1] : "vulnData.csv","w");
 $rowCount = 1;
 
 $ch = curl_init();
@@ -187,19 +238,20 @@ $yearRange = array(isset($argv[2]) ? intval($argv[2]) : 1988,
                    isset($argv[3]) ? intval($argv[3]) : 2023);
 $totalMonths = (abs($yearRange[1] - $yearRange[0]) + 1) * 12;
 $monthStatus = 1;
-$csvHeaders = isset($argv[4]) && !empty($argv[4]) ? readInCSVHeader($argv[4]) : 
-                                                    array("row#" => null,
-                                                    "id" => array("cve","id"),
-                                                    "sourceIdentifier" => array("cve","sourceIdentifier"),
-                                                    "published" => array("cve", "published"),
-                                                    "lastModified" => array("cve", "lastModified"),
-                                                    "vulnStatus" => array("cve", "vulnStatus"),
-                                                    "attackVector_V31" => array("cve","metrics", "cvssMetricV31", 0, "cvssData", "attackVector"),
-                                                    "cvssMetricV31_baseScore" => array("cve", "metrics", "cvssMetricV31", 0, "cvssData", "baseScore"),
-                                                    "cvssMetricV31_baseSeverity" => array("cve", "metrics", "cvssMetricV31", 0, "cvssData", "baseSeverity"),
-                                                    "cvssMetricV2_baseScore" => array("cve", "metrics", "cvssMetricV2", 0, "cvssData", "baseScore"),
-                                                    "cvssMetricV2_baseSeverity" => array("cve", "metrics", "cvssMetricV2", 0, "baseSeverity"),
-                                                    "accessVector_V2" => array("cve", "metrics", "cvssMetricV2", 0, "cvssData", "accessVector"));
+$csvHeaders = isset($argv[4]) && 
+              !empty($argv[4]) ? readInCSVHeader($argv[4]) : 
+                                array("row#" => null,
+                                "id" => array("cve","id"),
+                                "sourceIdentifier" => array("cve","sourceIdentifier"),
+                                "published" => array("cve", "published"),
+                                "lastModified" => array("cve", "lastModified"),
+                                "vulnStatus" => array("cve", "vulnStatus"),
+                                "attackVector_V31" => array("cve","metrics", "cvssMetricV31", 0, "cvssData", "attackVector"),
+                                "cvssMetricV31_baseScore" => array("cve", "metrics", "cvssMetricV31", 0, "cvssData", "baseScore"),
+                                "cvssMetricV31_baseSeverity" => array("cve", "metrics", "cvssMetricV31", 0, "cvssData", "baseSeverity"),
+                                "cvssMetricV2_baseScore" => array("cve", "metrics", "cvssMetricV2", 0, "cvssData", "baseScore"),
+                                "cvssMetricV2_baseSeverity" => array("cve", "metrics", "cvssMetricV2", 0, "baseSeverity"),
+                                "accessVector_V2" => array("cve", "metrics", "cvssMetricV2", 0, "cvssData", "accessVector"));
 
 
 //write header to csv
@@ -225,9 +277,7 @@ for($i = $yearRange[0]; $i <= $yearRange[1]; $i++) {
                 writeEntryToFile($data, $file, $csvHeaders, $rowCount);
             } catch (TypeError $te) {
                 echo "\n\n\n\n TypeError was thrown for file writing, aborting.\n";
-                curl_close($ch);
-                fclose($file);
-                exit(0);
+                gracefullyExit($file,$ch);
             }
             //each response gives 2000 entries
             $startIndex += 2_000;
