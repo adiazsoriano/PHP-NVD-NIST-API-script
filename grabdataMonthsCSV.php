@@ -87,10 +87,9 @@ function writeEntryToFile(array $entry, mixed $file, array $headers, int &$rowCo
             } else {
                 $element = fetch_in_array($vuln,$header);
                 if($element) {
-                    $row .= $element . ",";
-                } else { //empty cell
-                    $row .= ",";
-                }
+                    $row .= is_numeric($element) ? $element : "\"{$element}\"";
+                }//if not true, it's an empty cell  
+                $row .= ",";
             }
         } 
         $row = substr($row,0,strlen($row) - 1);
