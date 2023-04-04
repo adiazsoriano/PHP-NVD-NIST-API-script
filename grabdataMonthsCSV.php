@@ -161,7 +161,7 @@ function convertTypesInArray(array $items) : array | null {
  * Prints a status given current status and total
  */
 function printStatus(int $status, int $total) : void {
-    $current = ($status / $total) * 100.0;
+    $current = ($status / ($total-1)) * 100.0;
     $progressBarFill = str_repeat("#",intval($current / 4));
     $progressBarEmpty = str_repeat(".", (25 - intval($current / 4)));
     printf("Status: [%s%s] %.02f%%\n%s",$progressBarFill,$progressBarEmpty,$current,prevLineCR);
@@ -226,17 +226,18 @@ function gracefullyExit(mixed $file = null, CurlHandle $ch = null) : void {
 checkValidArgs($argv);
 
 //init variables
-$file = fopen(isset($argv[1]) && 
-             !empty($argv[1]) ? $argv[1] : "vulnData.csv","w");
 $rowCount = 1;
+$monthStatus = 0;
 
 $ch = curl_init();
 $data;
 
+$file = fopen(isset($argv[1]) && 
+             !empty($argv[1]) ? $argv[1] : "vulnData.csv","w");
+
 $yearRange = array(isset($argv[2]) ? intval($argv[2]) : 1988,
                    isset($argv[3]) ? intval($argv[3]) : 2023);
 $totalMonths = (abs($yearRange[1] - $yearRange[0]) + 1) * 12;
-$monthStatus = 1;
 $csvHeaders = isset($argv[4]) && 
               !empty($argv[4]) ? readInCSVHeader($argv[4]) : 
                                 array("row#" => null,
@@ -270,6 +271,9 @@ for($i = $yearRange[0]; $i <= $yearRange[1]; $i++) {
     for($j = 1; $j < 13; $j++) {
         $startIndex = 0;
         $data;
+
+        printYearMonthStatus($i,$j);
+        printStatus($monthStatus,$totalMonths);
         do {
             $data = json_decode(callNVDAPI($ch,$i,$j,$startIndex, isset($argv[5]) ? $argv[5] : ""), true);
             try {
@@ -282,8 +286,6 @@ for($i = $yearRange[0]; $i <= $yearRange[1]; $i++) {
             $startIndex += 2_000;
         } while($startIndex < $data["totalResults"]);
 
-        printYearMonthStatus($i,$j);
-        printStatus($monthStatus,$totalMonths);
         $monthStatus++;
     }
 }
