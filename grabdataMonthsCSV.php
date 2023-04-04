@@ -234,7 +234,6 @@ $data;
 
 $file = fopen(isset($argv[1]) && 
              !empty($argv[1]) ? $argv[1] : "vulnData.csv","w");
-
 $yearRange = array(isset($argv[2]) ? intval($argv[2]) : 1988,
                    isset($argv[3]) ? intval($argv[3]) : 2023);
 $totalMonths = (abs($yearRange[1] - $yearRange[0]) + 1) * 12;
