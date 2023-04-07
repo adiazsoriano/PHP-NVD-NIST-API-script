@@ -161,7 +161,7 @@ function convertTypesInArray(array $items) : array | null {
  * Prints a status given current status and total
  */
 function printStatus(int $status, int $total) : void {
-    $current = ($status / ($total-1)) * 100.0;
+    $current = ($status / $total) * 100.0;
     $progressBarFill = str_repeat("#",intval($current / 4));
     $progressBarEmpty = str_repeat(".", (25 - intval($current / 4)));
     printf("Status: [%s%s] %.02f%%\n%s",$progressBarFill,$progressBarEmpty,$current,prevLineCR);
@@ -243,7 +243,7 @@ $file = fopen(isset($argv[1]) &&
              !empty($argv[1]) ? $argv[1] : "vulnData.csv","w");
 $yearRange = array(isset($argv[2]) ? intval($argv[2]) : 1988,
                    isset($argv[3]) ? intval($argv[3]) : 2023);
-$totalMonths = (abs($yearRange[1] - $yearRange[0]) + 1) * 12;
+$totalMonths = ((abs($yearRange[1] - $yearRange[0]) + 1) * 12)-1;
 $csvHeaders = isset($argv[4]) && 
               !empty($argv[4]) ? readInCSVHeader($argv[4]) : 
                                 array("row#" => null,
@@ -281,13 +281,15 @@ for($i = $yearRange[0]; $i <= $yearRange[1]; $i++) {
         printYearMonthStatus($i,$j);
         printStatus($monthStatus,$totalMonths);
         do {
-            $data = json_decode(callNVDAPI($ch,$i,$j,$startIndex, isset($argv[5]) ? $argv[5] : "",$apiKeyExists), true);
+            $data;
             try {
+                $data = json_decode(callNVDAPI($ch,$i,$j,$startIndex, isset($argv[5]) ? $argv[5] : "",$apiKeyExists), true);
                 writeEntryToFile($data, $file, $csvHeaders, $rowCount);
-            } catch (TypeError $te) {
-                echo "\n\n\n\n TypeError was thrown for file writing, aborting.\n";
+            } catch (Error $te) {
+                //Specific errors may appear in the future.
+                echo "\n\n\n\n An Error was thrown for the API call or file writing, aborting.\n";
                 gracefullyExit($file,$ch);
-            }
+            } 
             //each response gives 2000 entries
             $startIndex += 2_000;
         } while($startIndex < $data["totalResults"]);
