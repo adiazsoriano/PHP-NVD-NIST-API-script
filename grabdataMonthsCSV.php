@@ -24,7 +24,7 @@
 
 
 //contains apiKeyConfig
-require "config.php";
+include "config.php";
 
 //constants
 define("prevLineCR","\e[f");
@@ -36,7 +36,7 @@ define("clearScreen","\e[2J");
  * With an API key, 50 calls per 30 seconds are allowed.
  * Without an API key, 5 calls per 30 seconds.
  */
-function callNVDAPI(CurlHandle $ch, int $year, int $m, int $startIndex, string $args = "") : string | bool {
+function callNVDAPI(CurlHandle $ch, int $year, int $m, int $startIndex, string $args = "", bool $apiKeyExists = false) : string | bool {
     $data = false;
     $daysInMonth = cal_days_in_month(CAL_GREGORIAN,$m,$year);
     $month =  sprintf("%02d",$m);
@@ -49,7 +49,7 @@ function callNVDAPI(CurlHandle $ch, int $year, int $m, int $startIndex, string $
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 
         //API Key Authorization
-        if(apiKeyConfig !== null) {
+        if($apiKeyExists) {
             curl_setopt($ch, CURLOPT_HTTPHEADER, array(apiKeyConfig));
         }
     
@@ -221,9 +221,16 @@ function gracefullyExit(mixed $file = null, CurlHandle $ch = null) : void {
     exit(0);
 }
 
-
 //checks if args are valid, exits if not valid                                   
 checkValidArgs($argv);
+
+//ApiKey Check
+$apiKeyExists = false;
+try {
+    if(apiKeyConfig !== null) {
+        $apiKeyExists = true;
+    } 
+} catch(Error $e) {}
 
 //init variables
 $rowCount = 1;
@@ -274,7 +281,7 @@ for($i = $yearRange[0]; $i <= $yearRange[1]; $i++) {
         printYearMonthStatus($i,$j);
         printStatus($monthStatus,$totalMonths);
         do {
-            $data = json_decode(callNVDAPI($ch,$i,$j,$startIndex, isset($argv[5]) ? $argv[5] : ""), true);
+            $data = json_decode(callNVDAPI($ch,$i,$j,$startIndex, isset($argv[5]) ? $argv[5] : "",$apiKeyExists), true);
             try {
                 writeEntryToFile($data, $file, $csvHeaders, $rowCount);
             } catch (TypeError $te) {
